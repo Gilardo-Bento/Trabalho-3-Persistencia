@@ -85,7 +85,6 @@ async def gastos_usuarios_por_regiao_categoria(
 ):
     um_ano_atras = datetime.utcnow() - timedelta(days=365)
 
-    # Buscar usuários da região
     usuarios_cursor = users_collection.find({
         "endereco_de_entrega.cidade": {"$regex": f"^{cidade}$", "$options": "i"},
         "endereco_de_entrega.estado": {"$regex": f"^{estado}$", "$options": "i"}
@@ -96,7 +95,6 @@ async def gastos_usuarios_por_regiao_categoria(
     if not usuarios_ids:
         raise HTTPException(status_code=404, detail="Nenhum usuário encontrado na região informada.")
 
-    # Buscar pedidos no último ano desses usuários
     pedidos_cursor = pedidos_collection.find({
         "id_usuario": {"$in": usuarios_ids},
         "data_pedido": {"$gte": um_ano_atras}
@@ -118,7 +116,6 @@ async def gastos_usuarios_por_regiao_categoria(
             if not produto_id:
                 continue
 
-            # Buscar produto para verificar categoria
             produto = await produtos_collection.find_one({"_id": produto_id})
             if not produto or produto.get("categoria", "").lower() != categoria.lower():
                 continue
@@ -135,7 +132,6 @@ async def gastos_usuarios_por_regiao_categoria(
     if not gastos_por_usuario:
         raise HTTPException(status_code=404, detail="Nenhuma compra encontrada para a categoria e região informadas.")
 
-    # Ordenar usuários por maior gasto
     usuarios_ordenados = sorted(gastos_por_usuario.items(), key=lambda x: x[1], reverse=True)
 
     resposta = []

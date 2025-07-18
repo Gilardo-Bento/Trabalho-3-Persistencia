@@ -8,14 +8,12 @@ from pydantic import ConfigDict
 from models.base import PyObjectId
 from all_enum.status_enum import TipoDesconto
 
-
 class PromocaoBase(BaseModel):
     nome: str
     data_inicio: datetime
     data_fim: datetime
     tipo_desconto: TipoDesconto
     valor_desconto: float
-    # produtos_aplicaveis: List[PyObjectId] = []
     produtos_aplicaveis: List[PyObjectId] = Field(
         default_factory=list,
         example=[
@@ -24,7 +22,7 @@ class PromocaoBase(BaseModel):
         ]
     )
 
-    # Configuração do modelo para Pydantic v2
+    
     model_config = ConfigDict(
         populate_by_name=True,
         arbitrary_types_allowed=True,

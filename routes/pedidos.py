@@ -6,32 +6,17 @@ from typing import List, Optional
 from database import pedidos_collection
 from models.pedido_model import PedidoCreate, PedidoOut, StatusPedido, FormaPagamento
 from models.base import PyObjectId
+
 router = APIRouter(prefix="/pedidos", tags=["Pedidos"])
 
-# ------------------------------
-# F1 - Inserir uma entidade (Create)
-# ------------------------------
-# @router.post("/", response_model=PedidoOut, status_code=status.HTTP_201_CREATED)
-# async def criar_pedido(pedido: PedidoCreate):
-#     pedido_dict = pedido.model_dump()
-#     result = await pedidos_collection.insert_one(pedido_dict)
-#     novo_pedido = await pedidos_collection.find_one({"_id": result.inserted_id})
-#     return PedidoOut(**novo_pedido)
 @router.post("/", response_model=PedidoOut, status_code=status.HTTP_201_CREATED)
 async def criar_pedido(pedido: PedidoCreate):
     pedido_dict = pedido.model_dump(by_alias=True)
     result = await pedidos_collection.insert_one(pedido_dict)
     novo_pedido = await pedidos_collection.find_one({"_id": result.inserted_id})
     return PedidoOut(**novo_pedido)
-# ------------------------------
-# F2 + F5 - Listar todos com paginação
-# ------------------------------
-# @router.get("/", response_model=List[PedidoOut])
-# async def listar_pedidos(page: int = 1, limit: int = 10):
-#     skip = (page - 1) * limit
-#     cursor = pedidos_collection.find().skip(skip).limit(limit)
-#     pedidos = [PedidoOut(**doc) async for doc in cursor]
-#     return pedidos
+
+
 @router.get("/", response_model=List[PedidoOut])
 async def listar_pedidos(page: int = 1, limit: int = 10):
     skip = (page - 1) * limit
@@ -43,9 +28,8 @@ async def listar_pedidos(page: int = 1, limit: int = 10):
             doc["data_pedido"] = datetime.fromisoformat(doc["data_pedido"])
         pedidos.append(PedidoOut(**doc))
     return pedidos
-# ------------------------------
-# F3 - Ler (Read) pedido por ID
-# ------------------------------
+
+
 @router.get("/{pedido_id}", response_model=PedidoOut)
 async def obter_pedido(pedido_id: str):
     if not ObjectId.is_valid(pedido_id):
@@ -55,9 +39,8 @@ async def obter_pedido(pedido_id: str):
         raise HTTPException(status_code=404, detail="Pedido não encontrado.")
     return PedidoOut(**pedido)
 
-# ------------------------------
-# F3 - Atualizar (Update) pedido
-# ------------------------------
+
+
 @router.put("/{pedido_id}", response_model=PedidoOut)
 async def atualizar_pedido(pedido_id: str, dados: PedidoCreate):
     if not ObjectId.is_valid(pedido_id):
@@ -71,9 +54,8 @@ async def atualizar_pedido(pedido_id: str, dados: PedidoCreate):
     pedido = await pedidos_collection.find_one({"_id": ObjectId(pedido_id)})
     return PedidoOut(**pedido)
 
-# ------------------------------
-# F3 - Deletar (Delete) pedido
-# ------------------------------
+
+
 @router.delete("/{pedido_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def deletar_pedido(pedido_id: str):
     if not ObjectId.is_valid(pedido_id):
@@ -83,17 +65,15 @@ async def deletar_pedido(pedido_id: str):
         raise HTTPException(status_code=404, detail="Pedido não encontrado.")
     return
 
-# ------------------------------
-# F4 - Mostrar a quantidade total
-# ------------------------------
+
+
 @router.get("/quantidade/total", response_model=dict)
 async def contar_pedidos():
     total = await pedidos_collection.count_documents({})
     return {"total_pedidos": total}
 
-# ------------------------------
-# F6 - Filtro por status, forma de pagamento, intervalo de datas
-# ------------------------------
+
+
 @router.get("/filtro/", response_model=List[PedidoOut])
 async def filtrar_pedidos(
     status: Optional[StatusPedido] = None,
@@ -110,7 +90,6 @@ async def filtrar_pedidos(
 
     if data_inicio or data_fim:
         filtros["data_pedido"] = {}
-        from datetime import datetime
 
         if data_inicio:
             try:
@@ -145,16 +124,31 @@ async def filtrar_pedidos_por_usuario(
 
 
 
-@router.get("/filtro/ano/{ano}", response_model=List[PedidoOut])
-async def filtrar_pedidos_por_ano(ano: int):
-    from datetime import datetime
-    inicio = datetime(ano, 1, 1)
-    fim = datetime(ano + 1, 1, 1)
-    cursor = pedidos_collection.find({
-        "data_pedido": {"$gte": inicio, "$lt": fim}
-    })
-    return [PedidoOut(**doc) async for doc in cursor]
 
+def calcular_intervalo(ano: int, mes: Optional[int] = None) -> tuple[datetime, datetime]:
+    if mes:
+        inicio = datetime(ano, mes, 1)
+        fim = datetime(ano + 1, 1, 1) if mes == 12 else datetime(ano, mes + 1, 1)
+    else:
+        inicio = datetime(ano, 1, 1)
+        fim = datetime(ano + 1, 1, 1)
+    return inicio, fim
+
+@router.get("/filtro/ano/{ano}", response_model=List[PedidoOut])
+async def filtrar_pedidos_por_data(
+    ano: int,
+    mes: Optional[int] = Query(None, ge=1, le=12, description="Mês opcional para filtrar os pedidos")
+):
+    inicio, fim = calcular_intervalo(ano, mes)
+
+    filtro = {
+        "data_pedido": {"$gte": inicio, "$lt": fim}
+    }
+
+    cursor = pedidos_collection.find(filtro)
+
+    pedidos = [PedidoOut(**doc) async for doc in cursor]
+    return pedidos
 
 @router.get("/ordenar/", response_model=List[PedidoOut])
 async def ordenar_pedidos(

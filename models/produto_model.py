@@ -7,22 +7,15 @@ from all_enum.status_enum import CategoriaProduto
 from models.base import PyObjectId
 
 
-class VariacaoProduto(BaseModel):
-    sku: str
-    atributos: Dict[str, str]
-    preco_adicional: float
-    estoque: int
-    urls_imagens: List[str]
 
 class ProdutoBase(BaseModel):
     nome: str
     descricao: str
     preco_base: float
     categoria: CategoriaProduto
-    variacoes: List[VariacaoProduto] = []
-    data_de_cadastro: Optional[datetime] = None  # campo opcional
-
-    
+    data_de_cadastro: Optional[datetime] = None  
+    estoque: int = 0   
+    marca: Optional[str] = None
 
 class ProdutoCreate(ProdutoBase):
     pass

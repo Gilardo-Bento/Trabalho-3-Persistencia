@@ -5,12 +5,12 @@ from database import produtos_collection
 from models.produto_model import ProdutoCreate, ProdutoOut, CategoriaProduto
 from models.base import PyObjectId
 from bson import ObjectId
+from models.produto_model import ProdutoCreate, ProdutoOut
+from all_enum.status_enum import CategoriaProduto
+
 
 router = APIRouter(prefix="/produtos", tags=["Produtos"])
 
-# ------------------------------
-# F1 - Inserir uma entidade (Create)
-# ------------------------------
 @router.post("/", response_model=ProdutoOut, status_code=status.HTTP_201_CREATED)
 async def criar_produto(produto: ProdutoCreate):
     produto_dict = produto.model_dump()
@@ -20,18 +20,14 @@ async def criar_produto(produto: ProdutoCreate):
     novo_produto = await produtos_collection.find_one({"_id": result.inserted_id})
     return ProdutoOut(**novo_produto)
 
-# ------------------------------
-# F2 + F5 - Listar todos com paginação
-# ------------------------------
+
 @router.get("/", response_model=List[ProdutoOut])
 async def listar_produtos(page: int = 1, limit: int = 10):
     skip = (page - 1) * limit
     cursor = produtos_collection.find().skip(skip).limit(limit)
     return [ProdutoOut(**doc) async for doc in cursor]
 
-# ------------------------------
-# F3 - Ler (Read) produto por ID
-# ------------------------------
+
 @router.get("/{produto_id}", response_model=ProdutoOut)
 async def obter_produto(produto_id: str):
     if not ObjectId.is_valid(produto_id):
@@ -41,9 +37,8 @@ async def obter_produto(produto_id: str):
         raise HTTPException(status_code=404, detail="Produto não encontrado.")
     return ProdutoOut(**produto)
 
-# ------------------------------
-# F3 - Atualizar (Update) produto
-# ------------------------------
+
+
 @router.put("/{produto_id}", response_model=ProdutoOut)
 async def atualizar_produto(produto_id: str, dados: ProdutoCreate):
     if not ObjectId.is_valid(produto_id):
@@ -57,9 +52,7 @@ async def atualizar_produto(produto_id: str, dados: ProdutoCreate):
     produto = await produtos_collection.find_one({"_id": ObjectId(produto_id)})
     return ProdutoOut(**produto)
 
-# ------------------------------
-# F3 - Deletar (Delete) produto
-# ------------------------------
+
 @router.delete("/{produto_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def deletar_produto(produto_id: str):
     if not ObjectId.is_valid(produto_id):
@@ -69,17 +62,13 @@ async def deletar_produto(produto_id: str):
         raise HTTPException(status_code=404, detail="Produto não encontrado.")
     return
 
-# ------------------------------
-# F4 - Mostrar a quantidade total
-# ------------------------------
+
 @router.get("/quantidade/total", response_model=dict)
 async def contar_produtos():
     total = await produtos_collection.count_documents({})
     return {"total_produtos": total}
 
-# ------------------------------
-# F6 - Filtro por nome, categoria e faixa de preço
-# ------------------------------
+
 @router.get("/filtro/", response_model=List[ProdutoOut])
 async def filtrar_produtos(
     nome: Optional[str] = None,
@@ -118,9 +107,7 @@ async def filtrar_por_ano(ano: Optional[int] = None):
     cursor = produtos_collection.find(filtros)
     return [ProdutoOut(**doc) async for doc in cursor]
 
-# ------------------------------
-# Ordenar produtos por campo e ordem (asc/desc)
-# ------------------------------
+
 @router.get("/ordenar/", response_model=List[ProdutoOut])
 async def ordenar_produtos(
     campo: str = "data_de_cadastro",

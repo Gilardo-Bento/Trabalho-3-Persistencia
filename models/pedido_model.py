@@ -33,5 +33,5 @@ class PedidoOut(PedidoBase):
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
 
     class Config:
-        populate_by_name = True  # Para compatibilidade com alias no FastAPI
+        populate_by_name = True  
         json_encoders = {ObjectId: str}

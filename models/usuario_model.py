@@ -14,12 +14,11 @@ class EnderecoUsuario(BaseModel):
     bairro: str
     cidade: str
     estado: str
-    cep: str
+    cep: str 
 
 class UserBase(BaseModel):
     nome: str
     email: EmailStr
-    # data_de_cadastro: datetime
     data_de_cadastro: datetime = Field(default_factory=datetime.now)
 
     telefone: str
