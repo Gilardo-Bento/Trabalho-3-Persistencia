@@ -1,106 +1,112 @@
-
-
-
-
-from fastapi import APIRouter, HTTPException, status, Query
+import math
+from datetime import datetime, timedelta
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from typing import List, Optional
+from logger import get_logger
 from database import promocoes_collection
 from models.promocao_model import PromocaoCreate, PromocaoOut, TipoDesconto
-from datetime import datetime
+from pagination import PaginationParams, PaginatedResponse
 from bson import ObjectId
+
+logger = get_logger("promocoes_logger", "log/promocoes.log")
 
 router = APIRouter(prefix="/promocoes", tags=["Promoções"])
 
+def validar_object_id(id_str: str, nome_campo: str = "ID") -> ObjectId:
+    if not ObjectId.is_valid(id_str):
+        logger.warning(f"Tentativa de usar um {nome_campo} inválido: {id_str}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"{nome_campo} inválido.")
+    return ObjectId(id_str)
 
-def validar_object_id(id: str, nome: str = "ID") -> ObjectId:
-    if not ObjectId.is_valid(id):
-        raise HTTPException(status_code=400, detail=f"{nome} inválido.")
-    return ObjectId(id)
-
-
-@router.post("/", response_model=PromocaoOut, status_code=status.HTTP_201_CREATED)
+@router.post("/create", response_model=PromocaoOut, status_code=status.HTTP_201_CREATED)
 async def criar_promocao(promocao: PromocaoCreate):
-    dados = promocao.dict(by_alias=True)
+    logger.info(f"Tentativa de criar promoção: {promocao.nome}")
+    dados = promocao.model_dump()
 
     if dados["data_inicio"] >= dados["data_fim"]:
-        raise HTTPException(400, detail="Data de início deve ser anterior à data de fim.")
+        logger.warning(f"Falha ao criar promoção '{promocao.nome}': data de início posterior ou igual à data de fim.")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Data de início deve ser anterior à data de fim.")
 
-    if promocao.tipo_desconto == TipoDesconto.PORCENTAGEM and not (0 <= promocao.valor_desconto <= 100):
-        raise HTTPException(400, detail="Porcentagem de desconto deve estar entre 0 e 100.")
+    if promocao.tipo_desconto == TipoDesconto.PORCENTAGEM and not (0 < promocao.valor_desconto <= 100):
+        logger.warning(f"Falha ao criar promoção '{promocao.nome}': valor de porcentagem inválido ({promocao.valor_desconto}).")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Porcentagem de desconto deve estar entre 1 e 100.")
 
-    dados["produtos_aplicaveis"] = [ObjectId(prod_id) for prod_id in dados["produtos_aplicaveis"]]
+    dados["produtos_aplicaveis"] = [validar_object_id(pid, "ID do Produto") for pid in dados["produtos_aplicaveis"]]
 
     resultado = await promocoes_collection.insert_one(dados)
-    nova = await promocoes_collection.find_one({"_id": resultado.inserted_id})
-    return PromocaoOut(**nova)
+    nova_promocao = await promocoes_collection.find_one({"_id": resultado.inserted_id})
+    
+    logger.info(f"Promoção '{nova_promocao['nome']}' criada com sucesso (ID: {resultado.inserted_id}).")
+    return PromocaoOut(**nova_promocao)
 
-
-@router.get("/", response_model=List[PromocaoOut])
-async def listar_promocoes(page: int = Query(1, ge=1), limit: int = Query(10, ge=1, le=100)):
-    skip = (page - 1) * limit
-    cursor = promocoes_collection.find().skip(skip).limit(limit)
-    return [PromocaoOut(**doc) async for doc in cursor]
-
-
-@router.get("/{promocao_id}", response_model=PromocaoOut)
+@router.get("/get_by_id/{promocao_id}", response_model=PromocaoOut)
 async def obter_promocao(promocao_id: str):
     oid = validar_object_id(promocao_id, "ID da promoção")
     promocao = await promocoes_collection.find_one({"_id": oid})
     if not promocao:
-        raise HTTPException(404, detail="Promoção não encontrada.")
+        logger.warning(f"Promoção com ID '{promocao_id}' não encontrada.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Promoção não encontrada.")
     return PromocaoOut(**promocao)
 
+@router.get("/get_all", response_model=PaginatedResponse[PromocaoOut])
+async def listar_todas_promocoes(pagination: PaginationParams = Depends()):
+    logger.info(f"Listando todas as promoções - Página: {pagination.page}, Limite: {pagination.per_page}")
+    total_items = await promocoes_collection.count_documents({})
+    skip = (pagination.page - 1) * pagination.per_page
 
-@router.put("/{promocao_id}", response_model=PromocaoOut)
-async def atualizar_promocao(promocao_id: str, promocao: PromocaoCreate):
+    cursor = promocoes_collection.find({}).sort("data_fim", -1).skip(skip).limit(pagination.per_page)
+    promocoes = [PromocaoOut(**doc) async for doc in cursor]
+    total_pages = math.ceil(total_items / pagination.per_page) if total_items > 0 else 0
+
+    return PaginatedResponse(items=promocoes, total=total_items, page=pagination.page, per_page=pagination.per_page, total_pages=total_pages)
+
+@router.put("/update/{promocao_id}", response_model=PromocaoOut)
+async def atualizar_promocao(promocao_id: str, promocao_update: PromocaoCreate):
+    logger.info(f"Tentativa de atualizar promoção ID: {promocao_id}")
     oid = validar_object_id(promocao_id, "ID da promoção")
-    dados = promocao.dict(by_alias=True)
-
-    if dados["data_inicio"] >= dados["data_fim"]:
-        raise HTTPException(400, detail="Data de início deve ser anterior à data de fim.")
-
-    dados["produtos_aplicaveis"] = [ObjectId(prod_id) for prod_id in dados["produtos_aplicaveis"]]
+    dados = promocao_update.model_dump(exclude_unset=True)
 
     resultado = await promocoes_collection.update_one({"_id": oid}, {"$set": dados})
     if resultado.matched_count == 0:
-        raise HTTPException(404, detail="Promoção não encontrada.")
+        logger.warning(f"Promoção com ID '{promocao_id}' não encontrada para atualizar.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Promoção não encontrada.")
 
-    atualizada = await promocoes_collection.find_one({"_id": oid})
-    return PromocaoOut(**atualizada)
+    promocao_atualizada = await promocoes_collection.find_one({"_id": oid})
+    logger.info(f"Promoção ID '{promocao_id}' atualizada com sucesso.")
+    return PromocaoOut(**promocao_atualizada)
 
-
-@router.delete("/{promocao_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/delete/{promocao_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def deletar_promocao(promocao_id: str):
+    logger.info(f"Tentativa de deletar promoção ID: {promocao_id}")
     oid = validar_object_id(promocao_id, "ID da promoção")
     resultado = await promocoes_collection.delete_one({"_id": oid})
     if resultado.deleted_count == 0:
-        raise HTTPException(404, detail="Promoção não encontrada.")
+        logger.warning(f"Promoção com ID '{promocao_id}' não encontrada para deletar.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Promoção não encontrada.")
+    logger.info(f"Promoção ID '{promocao_id}' deletada com sucesso.")
+    return
 
-
-@router.get("/quantidade/total", response_model=dict)
-async def contar_promocoes():
-    total = await promocoes_collection.count_documents({})
-    return {"total_promocoes": total}
-
-
-@router.get("/filtro/", response_model=List[PromocaoOut])
-async def filtrar_promocoes(
+@router.get("/filtro/", response_model=PaginatedResponse[PromocaoOut])
+async def pesquisar_promocoes(
+    pagination: PaginationParams = Depends(),
     nome: Optional[str] = None,
     tipo_desconto: Optional[TipoDesconto] = None,
-    status: Optional[str] = Query(
-        None,
-        regex="^(ativas|futuras|expiradas)$",
-        description="Filtrar promoções por status: ativas, futuras ou expiradas"
-    )
+    produto_id: Optional[str] = None,
+    status: Optional[str] = Query(None, description="Filtrar por 'ativas', 'futuras' ou 'expiradas'", regex="^(ativas|futuras|expiradas)$"),
+    ordenar_por: str = "data_fim",
+    ordem: str = "desc"
 ):
     filtros = {}
+    now = datetime.utcnow()
+    logger.info(f"Pesquisando promoções com filtros: nome='{nome}', tipo='{tipo_desconto}', status='{status}', produto_id='{produto_id}'")
 
     if nome:
         filtros["nome"] = {"$regex": nome, "$options": "i"}
     if tipo_desconto:
         filtros["tipo_desconto"] = tipo_desconto.value
-
-    now = datetime.utcnow()
+    if produto_id:
+        filtros["produtos_aplicaveis"] = validar_object_id(produto_id, "ID do Produto")
+    
     if status == "ativas":
         filtros["data_inicio"] = {"$lte": now}
         filtros["data_fim"] = {"$gte": now}
@@ -109,36 +115,13 @@ async def filtrar_promocoes(
     elif status == "expiradas":
         filtros["data_fim"] = {"$lt": now}
 
-    cursor = promocoes_collection.find(filtros)
-    return [PromocaoOut(**doc) async for doc in cursor]
+    total_items = await promocoes_collection.count_documents(filtros)
+    sort_order = 1 if ordem.lower() == "asc" else -1
+    skip = (pagination.page - 1) * pagination.per_page
 
-
-
-@router.get("/produto/{produto_id}", response_model=List[PromocaoOut])
-async def promocoes_para_produto(produto_id: str):
-    oid = validar_object_id(produto_id, "ID do produto")
-    now = datetime.utcnow()
-    cursor = promocoes_collection.find({
-        "produtos_aplicaveis": oid,
-        "data_inicio": {"$lte": now},
-        "data_fim": {"$gte": now}
-    })
-    resultados = [PromocaoOut(**doc) async for doc in cursor]
-
-    if not resultados:
-        raise HTTPException(404, detail="Nenhuma promoção ativa encontrada para este produto.")
-    return resultados
-
-
-@router.get("/ordenar/", response_model=List[PromocaoOut])
-async def ordenar_promocoes(
-    campo: str = "data_inicio",
-    ordem: str = "asc",
-    page: int = Query(1, ge=1),
-    limit: int = Query(10, ge=1, le=100)
-):
-    sort_order = 1 if ordem == "asc" else -1
-    skip = (page - 1) * limit
-
-    cursor = promocoes_collection.find().sort(campo, sort_order).skip(skip).limit(limit)
-    return [PromocaoOut(**doc) async for doc in cursor]
+    cursor = promocoes_collection.find(filtros).sort(ordenar_por, sort_order).skip(skip).limit(pagination.per_page)
+    promocoes = [PromocaoOut(**doc) async for doc in cursor]
+    total_pages = math.ceil(total_items / pagination.per_page) if total_items > 0 else 0
+    
+    logger.info(f"Pesquisa encontrou {total_items} promoções.")
+    return PaginatedResponse(items=promocoes, total=total_items, page=pagination.page, per_page=pagination.per_page, total_pages=total_pages)

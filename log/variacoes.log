@@ -1,3 +1,29 @@
-
-
-
+2025/07/18 11:00:01 - INFO - Iniciando criação da variação: {'produto_id': ObjectId('687a509767e9df54448f7c97'), 'sku': 'HER-CAM-BAS-BR-M', 'atributos': {'cor': 'Branca', 'tamanho': 'M'}, 'preco_adicional': 0.0, 'estoque': 100, 'urls_imagens': ['https://cdn.example.com/images/HER-CAM-BAS-BR-M.jpg']}
+2025/07/18 11:00:01 - INFO - Variação criada com sucesso: {'_id': ObjectId('687a536180d1e0a161ea9390'), 'produto_id': ObjectId('687a509767e9df54448f7c97'), 'sku': 'HER-CAM-BAS-BR-M', 'atributos': {'cor': 'Branca', 'tamanho': 'M'}, 'preco_adicional': 0.0, 'estoque': 100, 'urls_imagens': ['https://cdn.example.com/images/HER-CAM-BAS-BR-M.jpg']}
+2025/07/18 15:33:32 - INFO - Listando todas as variações - Página: 1, Limite: 10
+2025/07/18 15:34:50 - INFO - Encontradas 1 variações para o produto ID: 687a509767e9df54448f7c97
+2025/07/19 11:29:33 - INFO - Tentativa de criar variação com SKU: VASO-CER-DECOR-AZ-P
+2025/07/19 11:29:33 - INFO - Variação com SKU 'VASO-CER-DECOR-AZ-P' criada com sucesso (ID: 687babcd6f6d600a09fc4af8).
+2025/07/19 11:29:50 - INFO - Tentativa de criar variação com SKU: LUM-LED-FLEX-PRETA-5W
+2025/07/19 11:29:50 - INFO - Variação com SKU 'LUM-LED-FLEX-PRETA-5W' criada com sucesso (ID: 687babde6f6d600a09fc4af9).
+2025/07/19 11:30:05 - INFO - Tentativa de criar variação com SKU: MANTA-SOFA-TRICO-ROSE-ALGOD
+2025/07/19 11:30:05 - INFO - Variação com SKU 'MANTA-SOFA-TRICO-ROSE-ALGOD' criada com sucesso (ID: 687babed6f6d600a09fc4afa).
+2025/07/19 11:30:26 - INFO - Tentativa de criar variação com SKU: FONE-BT-TWS-PRETO-NC
+2025/07/19 11:30:26 - INFO - Variação com SKU 'FONE-BT-TWS-PRETO-NC' criada com sucesso (ID: 687bac026f6d600a09fc4afb).
+2025/07/19 11:30:43 - INFO - Tentativa de criar variação com SKU: POWERBANK-10K-BRANCO-QC
+2025/07/19 11:30:43 - INFO - Variação com SKU 'POWERBANK-10K-BRANCO-QC' criada com sucesso (ID: 687bac136f6d600a09fc4afc).
+2025/07/19 11:30:53 - INFO - Tentativa de criar variação com SKU: TECLADO-MEC-PT-ABNT2-RED
+2025/07/19 11:30:53 - INFO - Variação com SKU 'TECLADO-MEC-PT-ABNT2-RED' criada com sucesso (ID: 687bac1d6f6d600a09fc4afd).
+2025/07/19 11:31:02 - INFO - Tentativa de criar variação com SKU: QC-1000P-MONTANHA
+2025/07/19 11:31:02 - INFO - Variação com SKU 'QC-1000P-MONTANHA' criada com sucesso (ID: 687bac266f6d600a09fc4afe).
+2025/07/19 11:31:13 - INFO - Tentativa de criar variação com SKU: BLOCOS-MONTAR-500PCS-CLARAS
+2025/07/19 11:31:13 - INFO - Variação com SKU 'BLOCOS-MONTAR-500PCS-CLARAS' criada com sucesso (ID: 687bac316f6d600a09fc4aff).
+2025/07/19 11:31:22 - INFO - Tentativa de criar variação com SKU: BABY-ALIVE-HORAPAP-LOIRA
+2025/07/19 11:31:22 - INFO - Variação com SKU 'BABY-ALIVE-HORAPAP-LOIRA' criada com sucesso (ID: 687bac3a6f6d600a09fc4b00).
+2025/07/19 12:00:50 - INFO - Listando todas as variações - Página: 1, Limite: 10
+2025/07/19 15:26:15 - INFO - Tentativa de criar variação com SKU: string
+2025/07/19 15:26:15 - INFO - Variação com SKU 'string' criada com sucesso (ID: 687be347e668d7fa75c79979).
+2025/07/19 15:26:27 - INFO - Listando todas as variações - Página: 1, Limite: 10
+2025/07/19 15:26:47 - INFO - Variação ID '687be347e668d7fa75c79979' deletada com sucesso.
+2025/07/19 15:27:27 - INFO - Encontradas 4 variações para o produto ID: 687a509767e9df54448f7c97
+2025/07/19 15:58:29 - INFO - Listando todas as variações - Página: 1, Limite: 10

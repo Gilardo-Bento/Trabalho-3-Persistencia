@@ -1,12 +1,9 @@
-
 from datetime import datetime
 from bson import ObjectId
 from typing import List, Dict, Optional
 from pydantic import BaseModel, Field
 from all_enum.status_enum import CategoriaProduto
 from models.base import PyObjectId
-
-
 
 class ProdutoBase(BaseModel):
     nome: str

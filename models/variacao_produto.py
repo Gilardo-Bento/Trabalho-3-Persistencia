@@ -6,7 +6,6 @@ from typing import Dict, List, Optional
 from bson import ObjectId
 from models.base import PyObjectId
 
-
 class VariacaoBase(BaseModel):
     produto_id: PyObjectId  # referência ao produto
     sku: str

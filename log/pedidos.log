@@ -1,0 +1,12 @@
+2025/07/18 18:48:53 - INFO - Pesquisando pedidos com filtros: id_usuario='None', status='StatusPedido.PENDENTE', nome_produto='None'
+2025/07/18 18:48:53 - INFO - Pesquisa encontrou 4 pedidos.
+2025/07/18 18:49:07 - INFO - Pesquisando pedidos com filtros: id_usuario='None', status='StatusPedido.ENVIADO', nome_produto='None'
+2025/07/18 18:49:07 - INFO - Pesquisa encontrou 4 pedidos.
+2025/07/18 18:49:18 - INFO - Pesquisando pedidos com filtros: id_usuario='None', status='StatusPedido.CANCELADO', nome_produto='None'
+2025/07/18 18:49:18 - INFO - Pesquisa encontrou 2 pedidos.
+2025/07/18 18:49:32 - INFO - Pesquisando pedidos com filtros: id_usuario='None', status='None', nome_produto='None'
+2025/07/18 18:49:32 - INFO - Pesquisa encontrou 7 pedidos.
+2025/07/19 15:58:49 - INFO - Tentativa de criar pedido para o usuário ID: 687a4d6f67e9df54448f7c96
+2025/07/19 15:58:49 - INFO - Pedido ID '687beae908902a4760606d37' criado com sucesso.
+2025/07/19 15:59:08 - INFO - Tentativa de deletar pedido ID: 687beae908902a4760606d37
+2025/07/19 15:59:08 - INFO - Pedido ID '687beae908902a4760606d37' deletado com sucesso.

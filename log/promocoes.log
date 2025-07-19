@@ -1,0 +1,16 @@
+2025/07/18 18:37:45 - INFO - Listando todas as promoções - Página: 1, Limite: 10
+2025/07/19 15:22:29 - INFO - Tentativa de criar promoção: string
+2025/07/19 15:22:29 - WARNING - Falha ao criar promoção 'string': data de início posterior ou igual à data de fim.
+2025/07/19 15:22:48 - INFO - Tentativa de criar promoção: string
+2025/07/19 15:22:48 - WARNING - Falha ao criar promoção 'string': valor de porcentagem inválido (0.0).
+2025/07/19 15:22:59 - INFO - Tentativa de criar promoção: string
+2025/07/19 15:22:59 - INFO - Promoção 'string' criada com sucesso (ID: 687be283e668d7fa75c79978).
+2025/07/19 15:23:23 - INFO - Listando todas as promoções - Página: 1, Limite: 10
+2025/07/19 15:23:45 - INFO - Tentativa de atualizar promoção ID: 687be283e668d7fa75c79978
+2025/07/19 15:23:45 - INFO - Promoção ID '687be283e668d7fa75c79978' atualizada com sucesso.
+2025/07/19 15:24:04 - INFO - Tentativa de deletar promoção ID: 687be283e668d7fa75c79978
+2025/07/19 15:24:04 - INFO - Promoção ID '687be283e668d7fa75c79978' deletada com sucesso.
+2025/07/19 15:24:21 - INFO - Pesquisando promoções com filtros: nome='None', tipo='TipoDesconto.PORCENTAGEM', status='None', produto_id='None'
+2025/07/19 15:24:21 - INFO - Pesquisa encontrou 4 promoções.
+2025/07/19 15:24:49 - INFO - Pesquisando promoções com filtros: nome='None', tipo='TipoDesconto.VALOR_FIXO', status='None', produto_id='None'
+2025/07/19 15:24:49 - INFO - Pesquisa encontrou 2 promoções.

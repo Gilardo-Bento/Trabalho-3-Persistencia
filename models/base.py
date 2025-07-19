@@ -17,10 +17,8 @@ class PyObjectId(ObjectId):
 
     @classmethod
     def __get_pydantic_core_schema__(cls, source_type, handler: GetCoreSchemaHandler) -> core_schema.CoreSchema:
-        # Validação simples usando a função validate acima
         return core_schema.no_info_plain_validator_function(cls.validate)
 
     @classmethod
     def __get_pydantic_json_schema__(cls, core_schema, handler):
-        # Define que o JSON deve ser string
         return {"type": "string"}
