@@ -118,3 +118,10 @@ async def listar_variacoes_por_produto(produto_id: str):
     variacoes = [VariacaoOut(**doc) async for doc in cursor]
     logger.info(f"Encontradas {len(variacoes)} variações para o produto ID: {produto_id}")
     return variacoes
+
+
+@router.get("/quantidade", response_model=int)
+async def contar_variacoes():
+    total = await variacao_collection.count_documents({})
+    logger.info(f"Total de variações: {total}")
+    return total

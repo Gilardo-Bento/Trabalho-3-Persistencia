@@ -122,3 +122,11 @@ async def pesquisar_usuarios(
         page=pagination.page,
         per_page=pagination.per_page
     )
+    
+    
+    
+@router.get("/quantidade", response_model=int)
+async def contar_usuarios():
+    total = await users_collection.count_documents({})
+    logger.info(f"Total de usuários: {total}")
+    return total

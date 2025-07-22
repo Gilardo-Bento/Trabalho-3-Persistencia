@@ -175,3 +175,10 @@ async def pesquisar_pedidos(
     
     logger.info(f"Pesquisa encontrou {total_items} pedidos.")
     return PaginatedResponse(items=pedidos, total=total_items, page=pagination.page, per_page=pagination.per_page, total_pages=total_pages)
+
+
+@router.get("/quantidade", response_model=int)
+async def contar_pedidos():
+    total = await pedidos_collection.count_documents({})
+    logger.info(f"Total de pedidos: {total}")
+    return total

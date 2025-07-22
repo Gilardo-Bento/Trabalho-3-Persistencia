@@ -125,3 +125,10 @@ async def pesquisar_promocoes(
     
     logger.info(f"Pesquisa encontrou {total_items} promoções.")
     return PaginatedResponse(items=promocoes, total=total_items, page=pagination.page, per_page=pagination.per_page, total_pages=total_pages)
+
+
+@router.get("/quantidade", response_model=int)  
+async def contar_promocoes():
+    total = await promocoes_collection.count_documents({})
+    logger.info(f"Total de promoções: {total}")
+    return total

@@ -143,3 +143,10 @@ async def pesquisar_produtos(
         per_page=pagination.per_page,
         total_pages=total_pages
     )
+
+
+@router.get("/quantidade", response_model=int)
+async def contar_produtos():
+    total = await produtos_collection.count_documents({})
+    logger.info(f"Total de produtos: {total}")
+    return total
