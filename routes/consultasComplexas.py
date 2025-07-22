@@ -2,7 +2,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from all_enum.status_enum import CategoriaProduto
 from models.pedido_model import PedidoCreate, PedidoOut
 from collections import defaultdict, Counter
@@ -330,12 +330,11 @@ async def promocoes_vendas_por_categoria_detalhado():
 async def produtos_em_promocao(db: AsyncIOMotorDatabase = Depends(get_db)):
     """
     Gera uma lista de todos os produtos que estão atualmente em promoção,
-    detalhando a promoção aplicada e calculando o preço original e o promocional
-    para cada variação do produto.
+    detalhando a promoção aplicada.
     
     Entidades acessadas: Produto, Promocao e Variacao.
     """
-    agora = datetime.now()
+    agora = datetime.now(timezone.utc)
     resultado_final = []
 
     # 1. Encontrar todas as promoções ativas
@@ -482,7 +481,6 @@ async def ranking_best_sellers(
     """
     
     pipeline = [
-        # ... (Estágios $match, $unwind, $group, $lookup, $unwind) ...
         { "$match": { "status": "Entregue" } },
         { "$unwind": "$itens" },
         {

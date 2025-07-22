@@ -14,3 +14,5 @@
 2025/07/19 15:24:21 - INFO - Pesquisa encontrou 4 promoções.
 2025/07/19 15:24:49 - INFO - Pesquisando promoções com filtros: nome='None', tipo='TipoDesconto.VALOR_FIXO', status='None', produto_id='None'
 2025/07/19 15:24:49 - INFO - Pesquisa encontrou 2 promoções.
+2025/07/22 15:13:53 - INFO - Listando todas as promoções - Página: 1, Limite: 10
+2025/07/22 15:21:07 - INFO - Listando todas as promoções - Página: 1, Limite: 10

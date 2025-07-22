@@ -2,10 +2,10 @@ import math
 import logging
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from typing import List, Optional
-
+from typing import Dict, List, Optional, Tuple
+from motor.motor_asyncio import AsyncIOMotorDatabase
 from logger import get_logger
-from database import pedidos_collection, users_collection, produtos_collection, variacao_collection
+from database import get_db, pedidos_collection, users_collection, produtos_collection, variacao_collection
 from models.pedido_model import PedidoCreate, PedidoOut, StatusPedido, FormaPagamento
 from pagination import PaginationParams, PaginatedResponse
 from bson import ObjectId
@@ -19,48 +19,44 @@ def validar_object_id(id_str: str, nome_campo: str = "ID") -> ObjectId:
         logger.warning(f"Tentativa de usar um {nome_campo} inválido: {id_str}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"{nome_campo} inválido.")
     return ObjectId(id_str)
-
-@router.post("/create/")
-async def criar_pedido(pedido_data: PedidoCreate):
-
+@router.post("/create/", response_model=PedidoOut, status_code=status.HTTP_201_CREATED)
+async def criar_pedido(pedido_data: PedidoCreate, db: AsyncIOMotorDatabase = Depends(get_db)):
+    """
+    Cria um novo pedido, aplicando descontos de promoções ativas no momento da compra.
+    """
     logger.info(f"Tentativa de criar pedido para o usuário ID: {pedido_data.id_usuario}")
 
-    # Validação do usuário continua igual
     uid = validar_object_id(pedido_data.id_usuario, "ID do Usuário")
     if not await users_collection.find_one({"_id": uid}):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Usuário com ID '{uid}' não encontrado.")
 
     pedido_para_salvar = {
         "id_usuario": uid,
-        "data_pedido": datetime.utcnow(), # Data gerada no servidor
+        "data_pedido": datetime.now(),
         "status": pedido_data.status.value,
         "forma_pagamento": pedido_data.forma_pagamento.value,
         "itens": [],
-        "valor_total": 0.0 # Valor inicial que será calculado
+        "valor_total": 0.0
     }
     subtotal = 0.0
 
     for item_recebido in pedido_data.itens:
-        # 1. Busca a variação pelo SKU (chave para todo o processo)
         variacao = await variacao_collection.find_one({"sku": item_recebido.sku_selecionado})
         
-        # Validações essenciais
         if not variacao:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"SKU '{item_recebido.sku_selecionado}' não encontrado.")
         if variacao.get("estoque", 0) < item_recebido.quantidade:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Estoque insuficiente para o SKU '{item_recebido.sku_selecionado}'. Estoque atual: {variacao.get('estoque', 0)}.")
         
-        # 2. Busca o produto pai a partir da variação
         produto = await produtos_collection.find_one({"_id": variacao["produto_id"]})
         if not produto:
-            # Esta é uma inconsistência de dados, mas é bom tratar
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Produto pai para o SKU '{item_recebido.sku_selecionado}' não encontrado.")
         
-        # 3. Calcula o preço no servidor
-        preco_unitario = produto.get("preco_base", 0) + variacao.get("preco_adicional", 0)
+   
+        preco_unitario, _ = await calcular_preco_final(db, produto, variacao)
+        
         subtotal += item_recebido.quantidade * preco_unitario
         
-        # 4. Monta o dicionário completo do item para salvar no banco
         item_para_salvar_no_db = {
             "id_produto": variacao["produto_id"],
             "nome_produto": produto.get("nome", "Nome não disponível"),
@@ -71,16 +67,18 @@ async def criar_pedido(pedido_data: PedidoCreate):
         }
         pedido_para_salvar["itens"].append(item_para_salvar_no_db)
 
-    # Finaliza o cálculo e atribui ao pedido
     pedido_para_salvar["valor_total"] = round(subtotal, 2)
     
-    # O resto do código para inserir no banco e retornar continua o mesmo
     result = await pedidos_collection.insert_one(pedido_para_salvar)
     novo_pedido = await pedidos_collection.find_one({"_id": result.inserted_id})
     logger.info(f"Pedido ID '{result.inserted_id}' criado com sucesso.")
     
-    # Abater o estoque aqui seria o próximo passo lógico.
-    # (Lógica para diminuir o estoque das variações vendidas)
+    # Abate o estoque
+    for item in pedido_para_salvar["itens"]:
+        await variacao_collection.update_one(
+            {"sku": item["sku_selecionado"]},
+            {"$inc": {"estoque": -item["quantidade"]}}
+        )
 
     return PedidoOut(**novo_pedido)
 
@@ -182,3 +180,39 @@ async def contar_pedidos():
     total = await pedidos_collection.count_documents({})
     logger.info(f"Total de pedidos: {total}")
     return total
+
+async def calcular_preco_final(
+    db: AsyncIOMotorDatabase, 
+    produto: Dict, 
+    variacao: Dict
+) -> Tuple[float, Optional[Dict]]:
+  
+    agora = datetime.now()
+    preco_original = produto.get("preco_base", 0) + variacao.get("preco_adicional", 0)
+    
+    promocao_ativa = await db.promocoes.find_one({
+        "data_inicio": {"$lte": agora},
+        "data_fim": {"$gte": agora},
+        "produtos_aplicaveis": produto["_id"] 
+    })
+
+    if not promocao_ativa:
+        return round(preco_original, 2), None
+
+    tipo_desconto = promocao_ativa.get("tipo_desconto")
+    valor_desconto = promocao_ativa.get("valor_desconto", 0)
+    preco_final = preco_original
+
+    if tipo_desconto == "porcentagem":
+        preco_final = preco_original * (1 - valor_desconto / 100)
+    elif tipo_desconto == "valor_fixo":
+        preco_final = preco_original - valor_desconto
+
+    preco_final_seguro = max(0, round(preco_final, 2))
+    
+    info_promocao = {
+        "id_promocao": promocao_ativa["_id"],
+        "nome_promocao": promocao_ativa.get("nome")
+    }
+
+    return preco_final_seguro, info_promocao
