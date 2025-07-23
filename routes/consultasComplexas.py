@@ -12,7 +12,6 @@ from database import pedidos_collection, produtos_collection, promocoes_collecti
 from bson import ObjectId
 
 router = APIRouter()
-
 @router.get("/relatorios/vendas-por-categoria", tags=["Consultas complexas"])
 async def vendas_por_categoria(
     categoria: CategoriaProduto | None = Query(default=None, description="Filtrar por categoria"),
@@ -42,29 +41,46 @@ async def vendas_por_categoria(
         } if usuario else {"nome": "Desconhecido", "email": "N/A", "telefone": "N/A"}
 
         for item in pedido.get("itens", []):
-            produto = await db.produtos.find_one({"_id": ObjectId(item["id_produto"])})
+            # --- INÍCIO DA CORREÇÃO ---
+            # 1. Usamos .get() para buscar o id_produto de forma segura.
+            id_produto_obj = item.get("id_produto")
+
+            # 2. Se o id_produto não existir no item (dados antigos), pulamos para o próximo.
+            if not id_produto_obj:
+                continue
+            
+            # 3. Agora é seguro buscar o produto, pois sabemos que o ID existe.
+            produto = await db.produtos.find_one({"_id": id_produto_obj})
+            # --- FIM DA CORREÇÃO ---
+            
             if not produto:
                 continue
 
-            cat = produto.get("categoria", "Indefinido")
-            if categoria and cat != categoria:
+            cat_value = produto.get("categoria", "Indefinido")
+            # Se o parâmetro 'categoria' for um Enum, pegamos seu valor
+            categoria_value = categoria.value if categoria and hasattr(categoria, 'value') else categoria
+
+            if categoria_value and cat_value != categoria_value:
                 continue
 
-            if cat not in vendas_categoria:
-                vendas_categoria[cat] = {
+            if cat_value not in vendas_categoria:
+                vendas_categoria[cat_value] = {
                     "quantidade": 0,
                     "valor_total": 0.0,
                     "pedidos": []
                 }
 
-            vendas_categoria[cat]["quantidade"] += item.get("quantidade", 0)
-            vendas_categoria[cat]["valor_total"] += item.get("quantidade", 0) * item.get("preco_unitario", 0.0)
+            quantidade_item = item.get("quantidade", 0)
+            preco_item = item.get("preco_unitario", 0.0)
 
-            vendas_categoria[cat]["pedidos"].append({
+            vendas_categoria[cat_value]["quantidade"] += quantidade_item
+            vendas_categoria[cat_value]["valor_total"] += quantidade_item * preco_item
+
+            vendas_categoria[cat_value]["pedidos"].append({
                 "nome_produto": produto.get("nome"),
                 "sku": item.get("sku_selecionado"),
-                "quantidade": item.get("quantidade"),
-                "preco_unitario": item.get("preco_unitario"),
+                "quantidade": quantidade_item,
+                "preco_unitario": preco_item,
                 "usuario": dados_usuario
             })
 
@@ -73,11 +89,12 @@ async def vendas_por_categoria(
         resultado.append({
             "categoria": cat,
             "quantidade_vendida": dados["quantidade"],
-            "valor_vendido": dados["valor_total"],
+            "valor_vendido": round(dados["valor_total"], 2), # Arredondar o valor final é uma boa prática
             "pedidos": dados["pedidos"]
         })
 
     return resultado
+
 
 @router.get("/relatorios/gastos-usuarios-por-regiao", tags=["Consultas complexas"])
 async def gastos_usuarios_por_regiao(

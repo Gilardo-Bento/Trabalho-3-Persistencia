@@ -19,6 +19,7 @@ def validar_object_id(id_str: str, nome_campo: str = "ID") -> ObjectId:
         logger.warning(f"Tentativa de usar um {nome_campo} inválido: {id_str}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"{nome_campo} inválido.")
     return ObjectId(id_str)
+
 @router.post("/create/", response_model=PedidoOut, status_code=status.HTTP_201_CREATED)
 async def criar_pedido(pedido_data: PedidoCreate, db: AsyncIOMotorDatabase = Depends(get_db)):
     """
@@ -102,20 +103,40 @@ async def listar_todos_pedidos(pagination: PaginationParams = Depends()):
     total_pages = math.ceil(total_items / pagination.per_page) if total_items > 0 else 0
 
     return PaginatedResponse(items=pedidos, total=total_items, page=pagination.page, per_page=pagination.per_page, total_pages=total_pages)
-
 @router.put("/update/{pedido_id}", response_model=PedidoOut)
-async def atualizar_pedido(pedido_id: str, dados: PedidoCreate):
+async def atualizar_pedido(pedido_id: str, dados: PedidoCreate, db: AsyncIOMotorDatabase = Depends(get_db)):
+    """
+    Atualiza os dados de um pedido (como status) usando o modelo PedidoCreate como base,
+    mas protegendo a lista de itens para que não seja sobrescrita.
+    """
     logger.info(f"Tentativa de atualizar pedido ID: {pedido_id}")
     oid = validar_object_id(pedido_id, "ID do Pedido")
         
+    # Pega todos os dados enviados pelo cliente.
     update_data = dados.model_dump(exclude_unset=True)
-    resultado = await pedidos_collection.update_one({"_id": oid}, {"$set": update_data})
+    
+    # --- A LINHA MAIS IMPORTANTE DA CORREÇÃO ---
+    # Remove a chave 'itens' do dicionário de atualização.
+    # Isso impede que a operação $set substitua o array de itens no banco.
+    # O ", None" garante que não haverá erro se a chave 'itens' não for enviada.
+    update_data.pop("itens", None)
+    
+    # Se, após remover os itens, não sobrar nada para atualizar, informa o cliente.
+    if not update_data:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Nenhum campo válido para atualização foi fornecido (ex: status, forma_pagamento)."
+        )
+
+    # Agora, o $set só vai atualizar os campos que restaram em update_data,
+    # como 'status' ou 'forma_pagamento', deixando 'itens' intacto.
+    resultado = await db.pedidos.update_one({"_id": oid}, {"$set": update_data})
     
     if resultado.matched_count == 0:
         logger.warning(f"Pedido com ID '{pedido_id}' não encontrado para atualizar.")
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido não encontrado.")
     
-    pedido_atualizado = await pedidos_collection.find_one({"_id": oid})
+    pedido_atualizado = await db.pedidos.find_one({"_id": oid})
     logger.info(f"Pedido ID '{pedido_id}' atualizado com sucesso.")
     return PedidoOut(**pedido_atualizado)
 
